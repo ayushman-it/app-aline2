@@ -171,7 +171,8 @@ flexDirection:"row",
 justifyContent:"space-between",
 padding:15,
 borderBottomWidth:1,
-borderColor:"#eee"
+borderColor:"#eee",
+paddingTop: 50,
 },
 
 title:{
