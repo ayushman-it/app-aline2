@@ -1,60 +1,23 @@
-import React, {useState, useRef} from "react";
+import React, { useState } from "react";
 import {
 View,
 Text,
 StyleSheet,
 TouchableOpacity,
-Image,
-Dimensions
+Image
 } from "react-native";
 
-import Icon from "react-native-vector-icons/Ionicons";
-import {launchImageLibrary} from "react-native-image-picker";
-import {Camera, useCameraDevices} from "react-native-vision-camera";
-
-const {width} = Dimensions.get("window");
-
-const CreatePostScreen = ({navigation}) => {
-
-const camera = useRef(null);
-const devices = useCameraDevices();
-const device = devices.back;
+const CreatePostScreen = ({ navigation }) => {
 
 const [mode,setMode] = useState("post");
 const [image,setImage] = useState(null);
-const [ratio,setRatio] = useState("auto");
+const [ratio,setRatio] = useState("1:1");
 
 
-// Pick from gallery
+// Dummy image (temporary)
 const openGallery = () => {
 
-launchImageLibrary(
-{
-mediaType:"photo",
-quality:1
-},
-(res)=>{
-
-if(res.assets){
-setImage(res.assets[0].uri);
-}
-
-}
-);
-
-};
-
-
-// Capture photo
-const capturePhoto = async () => {
-
-if(camera.current){
-
-const photo = await camera.current.takePhoto();
-
-setImage("file://"+photo.path);
-
-}
+setImage("https://picsum.photos/800/800");
 
 };
 
@@ -94,7 +57,7 @@ onPress={()=>navigation.navigate("Editor",{image})}
 
 
 
-{/* CAMERA / IMAGE PREVIEW */}
+{/* IMAGE PREVIEW */}
 
 <View style={[styles.preview,getRatioStyle()]}>
 
@@ -105,17 +68,13 @@ source={{uri:image}}
 style={styles.image}
 />
 
-) : device ? (
+) : (
 
-<Camera
-ref={camera}
-style={styles.camera}
-device={device}
-isActive={true}
-photo={true}
-/>
+<Text style={{color:"#999"}}>
+Select Image
+</Text>
 
-) : null}
+)}
 
 </View>
 
@@ -124,12 +83,6 @@ photo={true}
 {/* RATIO SELECTOR */}
 
 <View style={styles.ratioRow}>
-
-<TouchableOpacity onPress={()=>setRatio("auto")}>
-<Text style={ratio==="auto"?styles.active:styles.ratio}>
-AUTO
-</Text>
-</TouchableOpacity>
 
 <TouchableOpacity onPress={()=>setRatio("1:1")}>
 <Text style={ratio==="1:1"?styles.active:styles.ratio}>
@@ -153,21 +106,19 @@ AUTO
 
 
 
-{/* CAMERA CONTROLS */}
+{/* SELECT IMAGE */}
 
 <View style={styles.controls}>
 
-<TouchableOpacity onPress={openGallery}>
-<Icon name="images-outline" size={30}/>
-</TouchableOpacity>
-
 <TouchableOpacity
-style={styles.captureBtn}
-onPress={capturePhoto}
-/>
+style={styles.selectBtn}
+onPress={openGallery}
+>
 
-<TouchableOpacity>
-<Icon name="camera-reverse-outline" size={30}/>
+<Text style={{color:"#fff"}}>
+Pick Image
+</Text>
+
 </TouchableOpacity>
 
 </View>
@@ -240,11 +191,6 @@ justifyContent:"center",
 alignItems:"center"
 },
 
-camera:{
-width:"100%",
-height:"100%"
-},
-
 image:{
 width:"100%",
 height:"100%",
@@ -254,12 +200,12 @@ resizeMode:"cover"
 ratioRow:{
 flexDirection:"row",
 justifyContent:"space-around",
-paddingVertical:10
+paddingVertical:15
 },
 
 ratio:{
 color:"#777",
-fontSize:14
+fontSize:16
 },
 
 active:{
@@ -268,17 +214,14 @@ fontWeight:"bold"
 },
 
 controls:{
-flexDirection:"row",
-justifyContent:"space-around",
 alignItems:"center",
 paddingVertical:20
 },
 
-captureBtn:{
-width:70,
-height:70,
-borderRadius:40,
-backgroundColor:"#000"
+selectBtn:{
+backgroundColor:"#000",
+padding:15,
+borderRadius:8
 },
 
 modeContainer:{
