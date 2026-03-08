@@ -1,8 +1,8 @@
-# ALine Social App – Project Status
+# Aline2 Social App – Project Status
 
 ## Project Overview
 
-**ALine** is a social media mobile application built using React Native for the mobile client and Node.js + Express.js for the backend API.
+**Aline2** is a social media mobile application built using React Native for the mobile client and Node.js + Express.js for the backend API.
 
 The application allows users to:
 
@@ -14,7 +14,7 @@ The application allows users to:
 - Receive notifications
 - Search users and profiles
 
-The project is structured with **separate client and backend services** to ensure scalability and maintainability.
+The project is structured with separate client and backend services to ensure scalability and maintainability.
 
 ---
 
@@ -22,7 +22,7 @@ The project is structured with **separate client and backend services** to ensur
 
 ## Mobile Client
 
-Built using **React Native with TypeScript**.
+Built using React Native with TypeScript.
 
 ### Client Structure
 
