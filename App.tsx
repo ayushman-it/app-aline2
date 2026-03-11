@@ -4,6 +4,7 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 import LoginScreen from './src/screens/LoginScreen';
+import SplashScreen from './src/screens/SplashScreen';
 import SignupScreen from './src/screens/SignupScreen';
 import OtpVerifyScreen from './src/screens/OtpVerifyScreen';
 import ProfileScreen from './src/screens/ProfileScreen';
@@ -20,32 +21,37 @@ const Stack = createNativeStackNavigator();
 
 export default function App() {
   return (
-
     <GestureHandlerRootView style={{ flex: 1 }}>
-
       <NavigationContainer>
-        <Stack.Navigator screenOptions={{ headerShown: false }}>
 
+        <Stack.Navigator
+          initialRouteName="Splash"
+          screenOptions={{ headerShown: false }}
+        >
+
+          {/* Splash First */}
+          <Stack.Screen name="Splash" component={SplashScreen} />
+
+          {/* Auth Screens */}
           <Stack.Screen name="Login" component={LoginScreen} />
           <Stack.Screen name="Signup" component={SignupScreen} />
           <Stack.Screen name="OtpVerify" component={OtpVerifyScreen} />
-          <Stack.Screen name="Profile" component={ProfileScreen} />
-          <Stack.Screen name="Feed" component={FeedScreen} />
-          <Stack.Screen name="ProfileView" component={ProfileView} />
-
-          <Stack.Screen name="NotificationScreen" component={NotificationScreen} />
-          <Stack.Screen name="CreatePostScreen" component={CreatePostScreen} />
 
           {/* Main App */}
           <Stack.Screen name="MainApp" component={BottomTabs} />
 
+          {/* Other Screens */}
+          <Stack.Screen name="Profile" component={ProfileScreen} />
+          <Stack.Screen name="Feed" component={FeedScreen} />
+          <Stack.Screen name="ProfileView" component={ProfileView} />
+          <Stack.Screen name="NotificationScreen" component={NotificationScreen} />
+          <Stack.Screen name="CreatePostScreen" component={CreatePostScreen} />
           <Stack.Screen name="ProfilePreviewScreen" component={ProfilePreviewScreen} />
           <Stack.Screen name="FollowersFollowingScreen" component={FollowersFollowingScreen} />
 
         </Stack.Navigator>
+
       </NavigationContainer>
-
     </GestureHandlerRootView>
-
   );
 }

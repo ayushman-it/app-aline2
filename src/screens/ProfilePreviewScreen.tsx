@@ -25,12 +25,16 @@ const ProfilePreviewScreen = ({ route, navigation }) => {
  const [isFollowing, setIsFollowing] = useState(false);
  const [isMutual, setIsMutual] = useState(false);
  const [actionLoading, setActionLoading] = useState(false);
+ const [suggestions, setSuggestions] = useState([]);
+ const [showSuggestions, setShowSuggestions] = useState(true);
+ const [myFollowing, setMyFollowing] = useState([]);
 
- useEffect(() => {
-  fetchProfile();
- }, []);
 
- // ⭐ FETCH PROFILE
+useEffect(() => {
+ fetchProfile();
+ fetchSuggestions();
+}, []);
+
 const fetchProfile = async () => {
  try {
 
@@ -46,19 +50,22 @@ const fetchProfile = async () => {
   setUser(profileUser);
   setPosts(profileUser.posts || []);
 
-const amIFollowing = me?.following?.some(
- id => String(id) === String(userId)
-);
+  // 🔥 store my following list
+  setMyFollowing(me?.following || []);
 
-const isHeFollowingMe = profileUser?.followers?.some(
- id => String(id) === String(me?._id)
-);
+  const amIFollowing = me?.following?.some(
+   id => String(id) === String(userId)
+  );
 
-const isNotMyProfile =
- String(profileUser?._id) !== String(me?._id);
+  const isHeFollowingMe = profileUser?.followers?.some(
+   id => String(id) === String(me?._id)
+  );
 
-setIsFollowing(!!amIFollowing);
-setIsMutual(!!(amIFollowing && isHeFollowingMe && isNotMyProfile));
+  const isNotMyProfile =
+   String(profileUser?._id) !== String(me?._id);
+
+  setIsFollowing(!!amIFollowing);
+  setIsMutual(!!(amIFollowing && isHeFollowingMe && isNotMyProfile));
 
  } catch (err) {
   console.log(err);
@@ -66,8 +73,81 @@ setIsMutual(!!(amIFollowing && isHeFollowingMe && isNotMyProfile));
   setLoading(false);
  }
 };
+const fetchSuggestions = async () => {
 
- // ⭐ FOLLOW USER
+ try {
+
+  const token = await AsyncStorage.getItem("token");
+  const currentUserId = await AsyncStorage.getItem("userId");
+
+  const res = await API.get("/auth/users", {
+   headers: { Authorization: `Bearer ${token}` }
+  });
+
+  const allUsers = res.data.users || [];
+
+  const filteredUsers = allUsers.filter(user => {
+
+   const isMe = user._id === currentUserId;
+   const isProfileUser = user._id === userId;
+
+   // 🔥 correct follow check
+   const alreadyFollowing = myFollowing.includes(user._id);
+
+   return !isMe && !isProfileUser && !alreadyFollowing;
+
+  });
+
+  setSuggestions(filteredUsers.slice(0,10));
+
+ } catch (error) {
+
+  console.log("Suggestion Error:", error);
+
+ }
+
+};
+
+const renderSuggestion = ({ item }) => (
+
+ <TouchableOpacity
+  style={styles.suggestionCard}
+  onPress={() =>
+   navigation.push("ProfilePreviewScreen", {
+    userId: item._id
+   })
+  }
+ >
+
+  <Image
+   source={{
+    uri:
+     item.profilePic ||
+     "https://cdn-icons-png.flaticon.com/512/149/149071.png"
+   }}
+   style={styles.suggestionAvatar}
+  />
+
+  <Text numberOfLines={1} style={styles.suggestionUsername}>
+   {item.username}
+  </Text>
+
+  <Text numberOfLines={1} style={styles.suggestionName}>
+   {item.name}
+  </Text>
+
+<TouchableOpacity
+ style={styles.followSuggestionBtn}
+ onPress={() => toggleSuggestionFollow(item._id)}
+>
+ <Text style={styles.followSuggestionText}>
+  Follow
+ </Text>
+</TouchableOpacity>
+ </TouchableOpacity>
+
+);
+
 const followUser = async () => {
  try {
 
@@ -94,7 +174,35 @@ const followUser = async () => {
  }
 };
 
- // ⭐ UNFOLLOW USER
+const toggleSuggestionFollow = async (targetUserId) => {
+
+ try {
+
+  const token = await AsyncStorage.getItem("token");
+
+  await API.post(
+   `/auth/follow/${targetUserId}`,
+   {},
+   { headers: { Authorization: `Bearer ${token}` } }
+  );
+
+  // suggestion list se remove
+  setSuggestions(prev =>
+   prev.filter(user => user._id !== targetUserId)
+  );
+
+  fetchProfile();
+
+ } catch (err) {
+
+  console.log("Follow Error:", err.response?.data || err);
+
+  Alert.alert("Error", "Action failed");
+
+ }
+
+};
+
 const unfollowUser = async () => {
 
  Alert.alert(
@@ -139,7 +247,6 @@ const unfollowUser = async () => {
  );
 };
 
-
  const renderPost = ({ item }) => (
   <Image
    source={{ uri: item.image || "https://picsum.photos/300" }}
@@ -158,7 +265,6 @@ const unfollowUser = async () => {
  return (
   <View style={styles.container}>
 
-   {/* HEADER */}
    <View style={styles.topHeader}>
     <TouchableOpacity onPress={() => navigation.goBack()}>
      <Icon name="arrow-back" size={26} />
@@ -171,7 +277,6 @@ const unfollowUser = async () => {
     <Icon name="menu" size={26} />
    </View>
 
-   {/* PROFILE HEADER */}
    <View style={styles.header}>
     <Image
      source={{
@@ -208,18 +313,16 @@ const unfollowUser = async () => {
     </View>
    </View>
 
-   {/* BIO */}
    <View style={styles.bioSection}>
     <Text style={styles.name}>{user?.name}</Text>
-    <Text>{user?.bio}</Text>
+    <Text style={styles.bio}>{user?.bio}</Text>
 
     {user?.link && (
      <Text style={styles.link}>{user.link}</Text>
     )}
    </View>
 
-   {/* FOLLOW BUTTONS */}
-  <View style={styles.buttons}>
+<View style={styles.buttons}>
 
    {isFollowing ? (
     <TouchableOpacity
@@ -228,7 +331,7 @@ const unfollowUser = async () => {
      onPress={unfollowUser}
      disabled={actionLoading}
     >
-     <Text>Following</Text>
+     <Text style={styles.btnText}>Following</Text>
     </TouchableOpacity>
    ) : (
     <TouchableOpacity
@@ -237,13 +340,12 @@ const unfollowUser = async () => {
      onPress={followUser}
      disabled={actionLoading}
     >
-     <Text style={{ color: "#fff" }}>
+     <Text style={styles.followText}>
       {actionLoading ? "Loading..." : "Follow"}
      </Text>
     </TouchableOpacity>
    )}
 
-   {/* ⭐ MESSAGE BUTTON FIX */}
  {isMutual && (
   <TouchableOpacity
    style={styles.messageBtn}
@@ -257,9 +359,42 @@ const unfollowUser = async () => {
   </TouchableOpacity>
  )}
 
-  </View>
+</View>
 
-   {/* TABS */}
+<View style={styles.suggestionSection}>
+
+ <View style={styles.suggestionHeader}>
+  <Text style={styles.suggestionTitle}>
+   Discover People
+  </Text>
+
+  <TouchableOpacity
+   onPress={() =>
+    setShowSuggestions(!showSuggestions)
+   }
+  >
+   <Icon
+    name={showSuggestions ? "chevron-up" : "chevron-down"}
+    size={22}
+   />
+  </TouchableOpacity>
+ </View>
+
+ {showSuggestions && (
+
+  <FlatList
+   data={suggestions}
+   renderItem={renderSuggestion}
+   keyExtractor={(item) => item._id}
+   horizontal
+   showsHorizontalScrollIndicator={false}
+   contentContainerStyle={{ paddingHorizontal:15 }}
+  />
+
+ )}
+
+</View>
+
    <View style={styles.tabs}>
     <TouchableOpacity
      style={styles.tab}
@@ -295,16 +430,13 @@ const unfollowUser = async () => {
     </TouchableOpacity>
    </View>
 
-   {/* POSTS GRID */}
-   <View style={{ flex: 1 }}>
-    <FlatList
+   <FlatList
      data={posts}
      renderItem={renderPost}
      keyExtractor={(item) => item._id}
      numColumns={3}
      showsVerticalScrollIndicator={false}
-    />
-   </View>
+   />
 
   </View>
  );
@@ -323,9 +455,9 @@ const styles = StyleSheet.create({
   flexDirection:"row",
   alignItems:"center",
   justifyContent:"space-between",
-  paddingHorizontal:15,
+  paddingHorizontal:16,
   paddingTop:50,
-  paddingBottom:10,
+  paddingBottom:12,
   borderBottomWidth:1,
   borderColor:"#eee"
  },
@@ -338,13 +470,14 @@ const styles = StyleSheet.create({
 
  header:{
   flexDirection:"row",
-  padding:20,
+  paddingHorizontal:20,
+  paddingVertical:18,
   alignItems:"center"
  },
 
  profilePic:{
-  width:100,
-  height:100,
+  width:95,
+  height:95,
   borderRadius:50,
   marginRight:20
  },
@@ -365,17 +498,23 @@ const styles = StyleSheet.create({
  },
 
  statText:{
-  color:"#444"
+  color:"#444",
+  marginTop:2
  },
 
  bioSection:{
-  paddingHorizontal:20
+  paddingHorizontal:20,
+  marginBottom:8
  },
 
  name:{
   fontWeight:"bold",
-  fontSize:15,
-  marginBottom:3
+  fontSize:15
+ },
+
+ bio:{
+  color:"#444",
+  marginTop:2
  },
 
  link:{
@@ -383,50 +522,58 @@ const styles = StyleSheet.create({
   marginTop:2
  },
 
-buttons:{
+ buttons:{
   flexDirection:"row",
   paddingHorizontal:15,
   marginTop:10
-},
+ },
 
  followBtn:{
-   backgroundColor:"#0095f6",
-   paddingVertical:8,
-   borderRadius:6,
-   flex:1,
-   marginRight:5,
-   alignItems:"center",
-   justifyContent:"center"
+  backgroundColor:"#0095f6",
+  paddingVertical:9,
+  borderRadius:6,
+  flex:1,
+  marginRight:5,
+  alignItems:"center"
+ },
+
+ followText:{
+  color:"#fff",
+  fontWeight:"600"
  },
 
  unfollowBtn:{
-   borderWidth:1,
-   borderColor:"#ccc",
-   paddingVertical:8,
-   borderRadius:6,
-   flex:1,
-   marginRight:5,
-   alignItems:"center",
-   justifyContent:"center"
+  borderWidth:1,
+  borderColor:"#ccc",
+  paddingVertical:9,
+  borderRadius:6,
+  flex:1,
+  marginRight:5,
+  alignItems:"center"
+ },
+
+ btnText:{
+  fontWeight:"500"
  },
 
  messageBtn:{
-   borderWidth:1,
-   borderColor:"#ccc",
-   padding:8,
-   borderRadius:6,
-   flex:1,
-   marginLeft:5,
-   alignItems:"center",
-   justifyContent:"center",
-   flexDirection:"row"
+  borderWidth:1,
+  borderColor:"#ccc",
+  paddingVertical:9,
+  borderRadius:6,
+  flex:1,
+  marginLeft:5,
+  alignItems:"center",
+  justifyContent:"center",
+  flexDirection:"row"
  },
 
  tabs:{
   flexDirection:"row",
   borderTopWidth:1,
+  borderBottomWidth:1,
   borderColor:"#eee",
-  borderBottomWidth:1
+  marginTop:12
  },
 
  tab:{
@@ -444,6 +591,65 @@ buttons:{
   flex:1,
   justifyContent:"center",
   alignItems:"center"
- }
+ },
+suggestionSection:{
+ marginTop:15,
+ marginBottom:10
+},
+
+suggestionHeader:{
+ flexDirection:"row",
+ justifyContent:"space-between",
+ alignItems:"center",
+ paddingHorizontal:15,
+ marginBottom:10
+},
+
+suggestionTitle:{
+ fontSize:16,
+ fontWeight:"600"
+},
+
+suggestionCard:{
+ width:140,
+ backgroundColor:"#fff",
+ borderRadius:12,
+ padding:14,
+ alignItems:"center",
+ marginRight:12,
+ borderWidth:1,
+ borderColor:"#eee"
+},
+
+suggestionAvatar:{
+ width:65,
+ height:65,
+ borderRadius:32,
+ marginBottom:8
+},
+
+suggestionUsername:{
+ fontWeight:"600",
+ fontSize:14
+},
+
+suggestionName:{
+ fontSize:12,
+ color:"#777",
+ marginBottom:10
+},
+
+followSuggestionBtn:{
+ backgroundColor:"#0095f6",
+ paddingVertical:6,
+ paddingHorizontal:18,
+ borderRadius:6
+},
+
+followSuggestionText:{
+ color:"#fff",
+ fontWeight:"600",
+ fontSize:13
+},
 
 });

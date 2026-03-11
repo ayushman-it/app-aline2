@@ -1,326 +1,584 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  Image,
-  TextInput,
-  FlatList,
+ View,
+ Text,
+ StyleSheet,
+ TouchableOpacity,
+ Image,
+ TextInput,
+ FlatList,
+ ScrollView,
+ ActivityIndicator
 } from "react-native";
 
 import { launchImageLibrary } from "react-native-image-picker";
 import Icon from "react-native-vector-icons/Ionicons";
-
-const friends = [
-  { id: "1", name: "Rahul" },
-  { id: "2", name: "Aman" },
-  { id: "3", name: "Rohit" },
-  { id: "4", name: "Priya" },
-];
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { API } from "../api/api";
 
 const filters = [
-  { name: "Normal", overlay: null },
-  { name: "Warm", overlay: "rgba(255,150,0,0.2)" },
-  { name: "Cool", overlay: "rgba(0,150,255,0.2)" },
-  { name: "Vintage", overlay: "rgba(120,80,40,0.3)" },
+ { name: "Normal", overlay: null },
+ { name: "Warm", overlay: "rgba(255,150,0,0.25)" },
+ { name: "Cool", overlay: "rgba(0,150,255,0.25)" },
+ { name: "Vintage", overlay: "rgba(120,80,40,0.3)" }
 ];
 
-const CreatePostScreen = ({ navigation }: any) => {
-  const [step, setStep] = useState(1);
-  const [images, setImages] = useState<any[]>([]);
-  const [selectedFilter, setSelectedFilter] = useState(filters[0]);
+const CreatePostScreen = ({ navigation }) => {
 
-  const [caption, setCaption] = useState("");
-  const [location, setLocation] = useState("");
-  const [music, setMusic] = useState("");
+ const [step,setStep] = useState(1);
+ const [images,setImages] = useState([]);
+ const [selectedFilter,setSelectedFilter] = useState(filters[0]);
 
-  const [text, setText] = useState("");
-  const [showText, setShowText] = useState(false);
+ const [caption,setCaption] = useState("");
+ const [location,setLocation] = useState("");
+ const [music,setMusic] = useState("");
 
-  const [taggedUsers, setTaggedUsers] = useState<any[]>([]);
+ const [text,setText] = useState("");
+ const [showText,setShowText] = useState(false);
 
-  const pickImages = async () => {
-    const result = await launchImageLibrary({
-      mediaType: "photo",
-      selectionLimit: 5,
-    });
+ const [taggedUsers,setTaggedUsers] = useState([]);
+ const [friends,setFriends] = useState([]);
 
-    if (result.assets) {
-      setImages(result.assets);
-    }
-  };
+ const [loading,setLoading] = useState(true);
 
-  const toggleTag = (user: any) => {
-    if (taggedUsers.find((u) => u.id === user.id)) {
-      setTaggedUsers(taggedUsers.filter((u) => u.id !== user.id));
-    } else {
-      setTaggedUsers([...taggedUsers, user]);
-    }
-  };
+ useEffect(()=>{
+  loadUser();
+ },[]);
 
-  const renderImage = () => {
-    if (images.length === 0) {
-      return <Text style={{ color: "#999" }}>Select Image</Text>;
-    }
+ const loadUser = async ()=>{
 
-    const uri = images[0].uri;
+  try{
 
-    return (
-      <View style={{ width: "100%", height: "100%" }}>
-        <Image source={{ uri }} style={styles.image} />
+   const user = await AsyncStorage.getItem("user");
 
-        {selectedFilter.overlay && (
-          <View
-            style={{
-              ...StyleSheet.absoluteFillObject,
-              backgroundColor: selectedFilter.overlay,
-            }}
-          />
-        )}
-      </View>
-    );
-  };
+   if(!user){
+    setLoading(false);
+    return;
+   }
 
-  const handleNext = () => {
-    if (step < 4) {
-      setStep(step + 1);
-    } else {
-      const data = {
-        images,
-        filter: selectedFilter.name,
-        caption,
-        location,
-        music,
-        text,
-        taggedUsers,
-      };
+   const parsed = JSON.parse(user);
 
-      console.log("POST DATA", data);
-    }
-  };
+   fetchFriends(parsed._id);
 
-  return (
-    <View style={styles.container}>
-      {/* HEADER */}
+  }catch(err){
+   console.log(err);
+   setLoading(false);
+  }
 
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Icon name="arrow-back" size={26} />
-        </TouchableOpacity>
+ };
 
-        <Text style={styles.title}>New Post</Text>
+ const fetchFriends = async(id)=>{
 
-        <TouchableOpacity onPress={handleNext}>
-          <Text style={styles.next}>{step === 4 ? "POST" : "Next"}</Text>
-        </TouchableOpacity>
-      </View>
+  try{
 
-      {/* IMAGE PREVIEW */}
+   const token = await AsyncStorage.getItem("token");
 
-      <View style={styles.preview}>
-        {renderImage()}
+   const followersRes = await API.get(`/auth/followers/${id}`,{
+    headers:{Authorization:`Bearer ${token}`}
+   });
 
-        {showText && <Text style={styles.overlayText}>{text}</Text>}
-      </View>
+   const followingRes = await API.get(`/auth/following/${id}`,{
+    headers:{Authorization:`Bearer ${token}`}
+   });
 
-      {/* STEP 1 */}
+   const followers = followersRes?.data?.followers || [];
+   const following = followingRes?.data?.following || [];
 
-      {step === 1 && (
-        <View style={styles.center}>
-          <TouchableOpacity style={styles.btn} onPress={pickImages}>
-            <Text style={{ color: "#fff" }}>Select Images</Text>
-          </TouchableOpacity>
-        </View>
-      )}
+   const merged = [...followers,...following];
 
-      {/* STEP 2 FILTERS */}
+   const unique = merged.filter(
+    (v,i,a)=>a.findIndex(t=>t._id===v._id)===i
+   );
 
-      {step === 2 && (
-        <FlatList
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          data={filters}
-          keyExtractor={(item) => item.name}
-          renderItem={({ item }) => (
-            <TouchableOpacity
-              style={styles.filterItem}
-              onPress={() => setSelectedFilter(item)}
-            >
-              <View style={{ width: 70, height: 70 }}>
-                {images[0] && (
-                  <Image
-                    source={{ uri: images[0].uri }}
-                    style={styles.filterImage}
-                  />
-                )}
+   setFriends(unique);
 
-                {item.overlay && (
-                  <View
-                    style={{
-                      ...StyleSheet.absoluteFillObject,
-                      backgroundColor: item.overlay,
-                    }}
-                  />
-                )}
-              </View>
+  }catch(err){
+   console.log(err);
+  }finally{
+   setLoading(false);
+  }
 
-              <Text
-                style={{
-                  marginTop: 5,
-                  fontWeight:
-                    selectedFilter.name === item.name ? "bold" : "normal",
-                }}
-              >
-                {item.name}
-              </Text>
-            </TouchableOpacity>
-          )}
-        />
-      )}
+ };
 
-      {/* STEP 3 TEXT + MUSIC */}
+ const handleBack = ()=>{
 
-      {step === 3 && (
-        <View style={styles.tools}>
-          <TextInput
-            placeholder="Enter Text"
-            value={text}
-            onChangeText={setText}
-            style={styles.input}
-          />
+  if(step > 1){
+   setStep(step - 1);
+  }else{
+   navigation.goBack();
+  }
 
-          <TouchableOpacity
-            style={styles.smallBtn}
-            onPress={() => setShowText(true)}
-          >
-            <Text>Add Text</Text>
-          </TouchableOpacity>
+ };
 
-          <TextInput
-            placeholder="Music Name"
-            value={music}
-            onChangeText={setMusic}
-            style={styles.input}
-          />
-        </View>
-      )}
+ const pickImages = async ()=>{
 
-      {/* STEP 4 */}
+  const result = await launchImageLibrary({
+   mediaType:"photo",
+   selectionLimit:5,
+   quality:1
+  });
 
-      {step === 4 && (
-        <View style={{ padding: 20 }}>
-          <TextInput
-            placeholder="Write Caption"
-            value={caption}
-            onChangeText={setCaption}
-            style={styles.input}
-          />
+  console.log("IMAGE RESULT",result);
 
-          <TextInput
-            placeholder="Add Location"
-            value={location}
-            onChangeText={setLocation}
-            style={styles.input}
-          />
+  if(result?.assets && result.assets.length > 0){
+   setImages(result.assets);
+  }
 
-          <Text style={{ marginTop: 20, fontWeight: "bold" }}>
-            Tag Friends
-          </Text>
+ };
 
-          {friends.map((user) => {
-            const selected = taggedUsers.find((u) => u.id === user.id);
+ const toggleTag = (user)=>{
 
-            return (
-              <TouchableOpacity
-                key={user.id}
-                style={styles.friend}
-                onPress={() => toggleTag(user)}
-              >
-                <Text>{user.name}</Text>
-                <Text>{selected ? "✓" : ""}</Text>
-              </TouchableOpacity>
-            );
-          })}
-        </View>
-      )}
+  if(taggedUsers.find(u=>u._id===user._id)){
+   setTaggedUsers(taggedUsers.filter(u=>u._id!==user._id));
+  }else{
+   setTaggedUsers([...taggedUsers,user]);
+  }
+
+ };
+
+ const renderImage = ()=>{
+
+  if(!images?.length){
+   return(
+    <View style={styles.noImage}>
+     <Text style={{color:"#aaa"}}>Select Image</Text>
     </View>
+   );
+  }
+
+  const uri = images?.[0]?.uri;
+
+  return(
+
+   <View style={{width:"100%",height:"100%"}}>
+
+    <Image
+     source={{uri}}
+     style={styles.image}
+     resizeMode="cover"
+    />
+
+    {selectedFilter.overlay && (
+     <View
+      style={[
+       StyleSheet.absoluteFillObject,
+       {backgroundColor:selectedFilter.overlay}
+      ]}
+     />
+    )}
+
+    {showText && (
+     <Text style={styles.overlayText}>{text}</Text>
+    )}
+
+   </View>
+
   );
+
+ };
+
+ const handleNext = ()=>{
+
+  if(step < 4){
+   setStep(step + 1);
+  }else{
+
+   const data = {
+    images,
+    filter:selectedFilter.name,
+    caption,
+    location,
+    music,
+    text,
+    taggedUsers
+   };
+
+   console.log("POST DATA",data);
+
+  }
+
+ };
+
+ if(loading){
+  return(
+   <View style={styles.center}>
+    <ActivityIndicator size="large" color="#0095f6"/>
+   </View>
+  );
+ }
+
+ return(
+
+<View style={styles.container}>
+
+<View style={styles.header}>
+
+<TouchableOpacity onPress={handleBack}>
+<Icon name="arrow-back" size={26}/>
+</TouchableOpacity>
+
+<Text style={styles.title}>New Post</Text>
+
+<TouchableOpacity onPress={handleNext}>
+<Text style={styles.next}>
+{step===4 ? "Share":"Next"}
+</Text>
+</TouchableOpacity>
+
+</View>
+
+<View style={styles.preview}>
+{renderImage()}
+</View>
+
+{step===1 && (
+
+<View style={styles.center}>
+
+<TouchableOpacity
+style={styles.primaryBtn}
+onPress={pickImages}
+>
+
+<Icon name="images" size={22} color="#fff"/>
+
+<Text style={styles.primaryText}>
+Select Images
+</Text>
+
+</TouchableOpacity>
+
+</View>
+
+)}
+
+{step===2 && (
+
+<FlatList
+horizontal
+showsHorizontalScrollIndicator={false}
+data={filters}
+keyExtractor={(item)=>item.name}
+style={{paddingVertical:15}}
+renderItem={({item})=>(
+
+<TouchableOpacity
+style={styles.filterItem}
+onPress={()=>setSelectedFilter(item)}
+>
+
+<View style={styles.filterPreview}>
+
+{images?.[0]?.uri && (
+<Image
+source={{uri:images[0].uri}}
+style={styles.filterImage}
+/>
+)}
+
+{item.overlay && (
+<View
+style={[
+StyleSheet.absoluteFillObject,
+{backgroundColor:item.overlay}
+]}
+/>
+)}
+
+</View>
+
+<Text style={styles.filterText}>
+{item.name}
+</Text>
+
+</TouchableOpacity>
+
+)}
+/>
+
+)}
+
+{step===3 && (
+
+<View style={styles.editTools}>
+
+<TextInput
+placeholder="Add text on image"
+value={text}
+onChangeText={setText}
+style={styles.input}
+/>
+
+<TouchableOpacity
+style={styles.secondaryBtn}
+onPress={()=>setShowText(true)}
+>
+<Text>Add Text</Text>
+</TouchableOpacity>
+
+<TouchableOpacity style={styles.musicBtn}>
+<Icon name="musical-notes"/>
+<Text style={{marginLeft:6}}>
+{music ? music : "Add Music"}
+</Text>
+</TouchableOpacity>
+
+</View>
+
+)}
+
+{step===4 && (
+
+<ScrollView style={styles.captionContainer}>
+
+<View style={styles.captionRow}>
+
+<Image
+source={{uri:images?.[0]?.uri}}
+style={styles.captionImage}
+/>
+
+<TextInput
+placeholder="Write a caption..."
+value={caption}
+onChangeText={setCaption}
+style={styles.captionInput}
+multiline
+/>
+
+</View>
+
+<TextInput
+placeholder="Add Location"
+value={location}
+onChangeText={setLocation}
+style={styles.input}
+/>
+
+<Text style={styles.tagTitle}>
+Tag People
+</Text>
+
+{friends.map(user=>{
+
+const selected = taggedUsers.find(
+u=>u._id===user._id
+);
+
+return(
+
+<TouchableOpacity
+key={user._id}
+style={styles.friend}
+onPress={()=>toggleTag(user)}
+>
+
+<Image
+source={{
+uri:user.profilePic ||
+"https://cdn-icons-png.flaticon.com/512/149/149071.png"
+}}
+style={styles.avatar}
+/>
+
+<Text style={{flex:1}}>
+{user.username}
+</Text>
+
+{selected && (
+<Icon
+name="checkmark-circle"
+size={22}
+color="#0095f6"
+/>
+)}
+
+</TouchableOpacity>
+
+);
+
+})}
+
+</ScrollView>
+
+)}
+
+</View>
+
+ );
+
 };
 
 export default CreatePostScreen;
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#fff" },
 
-  header: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingTop: 50,
-    paddingHorizontal: 15,
-    paddingBottom: 10,
-    borderBottomWidth: 1,
-    borderColor: "#eee",
-  },
+container:{
+flex:1,
+backgroundColor:"#fff"
+},
 
-  title: { fontSize: 18, fontWeight: "bold" },
+header:{
+flexDirection:"row",
+justifyContent:"space-between",
+alignItems:"center",
+paddingTop:50,
+paddingHorizontal:20,
+paddingBottom:10,
+borderBottomWidth:0.5,
+borderColor:"#ddd"
+},
 
-  next: { color: "#1877f2", fontSize: 16 },
+title:{
+fontSize:18,
+fontWeight:"600"
+},
 
-  preview: {
-    height: 350,
-    backgroundColor: "#000",
-    justifyContent: "center",
-    alignItems: "center",
-  },
+next:{
+color:"#0095f6",
+fontWeight:"600",
+fontSize:16
+},
 
-  image: {
-    width: "100%",
-    height: "100%",
-  },
+preview:{
+height:400,
+width:"100%",
+backgroundColor:"#000"
+},
 
-  center: { alignItems: "center", padding: 30 },
+image:{
+width:"100%",
+height:"100%"
+},
 
-  btn: { backgroundColor: "#000", padding: 15, borderRadius: 10 },
+overlayText:{
+position:"absolute",
+color:"#fff",
+fontSize:32,
+fontWeight:"bold",
+alignSelf:"center",
+top:"45%"
+},
 
-  filterItem: {
-    margin: 10,
-    alignItems: "center",
-  },
+center:{
+flex:1,
+justifyContent:"center",
+alignItems:"center"
+},
 
-  filterImage: {
-    width: "100%",
-    height: "100%",
-  },
+primaryBtn:{
+flexDirection:"row",
+alignItems:"center",
+backgroundColor:"#0095f6",
+paddingVertical:14,
+paddingHorizontal:22,
+borderRadius:12
+},
 
-  tools: { padding: 20 },
+primaryText:{
+color:"#fff",
+marginLeft:8,
+fontWeight:"600"
+},
 
-  input: {
-    borderBottomWidth: 1,
-    padding: 10,
-    marginBottom: 20,
-  },
+filterItem:{
+alignItems:"center",
+marginHorizontal:10
+},
 
-  smallBtn: {
-    backgroundColor: "#eee",
-    padding: 10,
-    alignItems: "center",
-    marginBottom: 20,
-  },
+filterPreview:{
+width:70,
+height:70,
+borderRadius:12,
+overflow:"hidden"
+},
 
-  overlayText: {
-    position: "absolute",
-    color: "#fff",
-    fontSize: 26,
-    fontWeight: "bold",
-  },
+filterImage:{
+width:"100%",
+height:"100%"
+},
 
-  friend: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    padding: 15,
-    borderBottomWidth: 1,
-    borderColor: "#eee",
-  },
+filterText:{
+marginTop:5,
+fontSize:12
+},
+
+editTools:{
+padding:20
+},
+
+input:{
+backgroundColor:"#f2f2f2",
+padding:12,
+borderRadius:10,
+marginBottom:15
+},
+
+secondaryBtn:{
+backgroundColor:"#eee",
+padding:10,
+alignItems:"center",
+borderRadius:8,
+marginBottom:15
+},
+
+musicBtn:{
+flexDirection:"row",
+alignItems:"center",
+backgroundColor:"#f2f2f2",
+padding:12,
+borderRadius:10
+},
+
+captionContainer:{
+padding:15
+},
+
+captionRow:{
+flexDirection:"row",
+alignItems:"center",
+marginBottom:15
+},
+
+captionImage:{
+width:70,
+height:70,
+borderRadius:10,
+marginRight:10
+},
+
+captionInput:{
+flex:1,
+backgroundColor:"#f2f2f2",
+borderRadius:10,
+padding:10,
+minHeight:70
+},
+
+tagTitle:{
+fontWeight:"bold",
+marginBottom:10
+},
+
+friend:{
+flexDirection:"row",
+alignItems:"center",
+paddingVertical:12,
+borderBottomWidth:1,
+borderColor:"#eee"
+},
+
+avatar:{
+width:40,
+height:40,
+borderRadius:20,
+marginRight:10
+},
+
+noImage:{
+flex:1,
+justifyContent:"center",
+alignItems:"center"
+}
+
 });

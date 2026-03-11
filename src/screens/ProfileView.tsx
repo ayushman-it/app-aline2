@@ -7,6 +7,7 @@ import {
  Image,
  TouchableOpacity,
  FlatList,
+ Alert,
  ActivityIndicator
 } from "react-native";
 
@@ -23,6 +24,8 @@ const ProfileScreen = ({navigation}: any) => {
  const [loading, setLoading] = useState(true);
  const [activeTab, setActiveTab] = useState("posts");
  const [menuVisible, setMenuVisible] = useState(false);
+ const [isPrivate, setIsPrivate] = useState(false);
+
 
  useEffect(() => {
   fetchProfile();
@@ -49,6 +52,52 @@ const ProfileScreen = ({navigation}: any) => {
    console.log("Profile Error:", error.response?.data || error.message);
   } finally {
    setLoading(false);
+  }
+
+ };
+
+
+ // ⭐ TOGGLE PRIVATE PROFILE
+ const togglePrivateProfile = async () => {
+
+  try{
+
+   const token = await AsyncStorage.getItem("token");
+
+   const res = await API.post(
+    "/auth/toggle-private",
+    {},
+    { headers:{ Authorization:`Bearer ${token}` } }
+   );
+
+   setIsPrivate(res.data.isPrivate);
+   setMenuVisible(false);
+
+   if(res.data.isPrivate){
+
+    Alert.alert(
+     "Profile Updated",
+     "🔒 Your profile is now Private"
+    );
+
+   }else{
+
+    Alert.alert(
+     "Profile Updated",
+     "🌍 Your profile is now Public"
+    );
+
+   }
+
+  }catch(err){
+
+   console.log("Private Toggle Error:",err);
+
+   Alert.alert(
+    "Error",
+    "Unable to change profile privacy"
+   );
+
   }
 
  };
@@ -235,6 +284,17 @@ const ProfileScreen = ({navigation}: any) => {
       <TouchableOpacity style={styles.menuItem}>
        <Text style={styles.menuText}>Become a Seller</Text>
       </TouchableOpacity>
+
+       <TouchableOpacity
+             style={styles.menuItem}
+             onPress={togglePrivateProfile}
+        >
+         <Text style={styles.menuText}>
+          {isPrivate
+           ? "Switch to Public Profile"
+           : "Change to Private Profile"}
+         </Text>
+        </TouchableOpacity>
 
       <TouchableOpacity style={styles.menuItem}>
        <Text style={styles.menuText}>Help & Support</Text>
