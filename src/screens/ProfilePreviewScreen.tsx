@@ -35,6 +35,9 @@ useEffect(() => {
  fetchSuggestions();
 }, []);
 
+const isPrivateLocked =
+ user?.isPrivate === true && isMutual === false;
+
 const fetchProfile = async () => {
  try {
 
@@ -57,16 +60,25 @@ const fetchProfile = async () => {
    id => String(id) === String(userId)
   );
 
-  const isHeFollowingMe = profileUser?.followers?.some(
-   id => String(id) === String(me?._id)
-  );
+const isHeFollowingMe = profileUser?.following?.some(
+ id => String(id) === String(me?._id)
+);
 
   const isNotMyProfile =
    String(profileUser?._id) !== String(me?._id);
 
-  setIsFollowing(!!amIFollowing);
-  setIsMutual(!!(amIFollowing && isHeFollowingMe && isNotMyProfile));
+const mutualCheck =
+ amIFollowing && isHeFollowingMe;
 
+  setIsFollowing(!!amIFollowing);
+  setIsMutual(!!mutualCheck);
+
+
+  if(profileUser.isPrivate && !mutualCheck){
+    setPosts([]);
+  }else{
+    setPosts(profileUser.posts || []);
+  }
  } catch (err) {
   console.log(err);
  } finally {
@@ -161,7 +173,9 @@ const followUser = async () => {
    { headers: { Authorization: `Bearer ${token}` } }
   );
 
-  await fetchProfile();
+  setTimeout(() => {
+   fetchProfile();
+  }, 500);
 
   Alert.alert("Success ✅", "You are now following");
 
@@ -270,9 +284,12 @@ const unfollowUser = async () => {
      <Icon name="arrow-back" size={26} />
     </TouchableOpacity>
 
-    <Text numberOfLines={1} style={styles.headerUsername}>
-     {user?.username}
-    </Text>
+  <Text numberOfLines={1} style={styles.headerUsername}>
+   {user?.isPrivate &&  (<Icon name="lock-closed-outline" size={14} style={{marginRight:10}} />
+     )}
+   {user?.username}
+
+  </Text>
 
     <Icon name="menu" size={26} />
    </View>
@@ -295,21 +312,43 @@ const unfollowUser = async () => {
 
      <TouchableOpacity
       style={styles.stat}
-      onPress={() =>
-       navigation.navigate("FollowersFollowingScreen", {
-        userId: user?._id,
-        type: "followers"
-       })
+     onPress={() => {
+
+      if(isPrivateLocked){
+       Alert.alert("Private Profile","Follow to see followers");
+       return;
       }
+
+      navigation.navigate("FollowersFollowingScreen", {
+       userId: user?._id,
+       type: "followers"
+      });
+
+     }}
      >
      <Text style={styles.statNumber}>{user?.followers?.length || 0}</Text>
      <Text style={styles.statText}>Followers</Text>
      </TouchableOpacity>
 
-     <View style={styles.stat}>
-      <Text style={styles.statNumber}>{user?.following?.length || 0}</Text>
-      <Text style={styles.statText}>Following</Text>
-     </View>
+    <TouchableOpacity
+     style={styles.stat}
+     onPress={() => {
+
+      if(isPrivateLocked){
+       Alert.alert("Private Profile","Follow to see following");
+       return;
+      }
+
+      navigation.navigate("FollowersFollowingScreen", {
+       userId: user?._id,
+       type: "following"
+      });
+
+     }}
+    >
+    <Text style={styles.statNumber}>{user?.following?.length || 0}</Text>
+    <Text style={styles.statText}>Following</Text>
+    </TouchableOpacity>
     </View>
    </View>
 
@@ -398,7 +437,16 @@ const unfollowUser = async () => {
    <View style={styles.tabs}>
     <TouchableOpacity
      style={styles.tab}
-     onPress={() => setActiveTab("posts")}
+     onPress={() => {
+
+      if(isPrivateLocked){
+       Alert.alert("Private Profile","Follow to see content");
+       return;
+      }
+
+      setActiveTab("posts");
+
+     }}
     >
      <Icon
       name="grid-outline"
@@ -409,7 +457,16 @@ const unfollowUser = async () => {
 
     <TouchableOpacity
      style={styles.tab}
-     onPress={() => setActiveTab("swipes")}
+    onPress={() => {
+
+     if(isPrivateLocked){
+      Alert.alert("Private Profile","Follow to see content");
+      return;
+     }
+
+     setActiveTab("swipes");
+
+    }}
     >
      <Icon
       name="heart-outline"
@@ -420,7 +477,16 @@ const unfollowUser = async () => {
 
     <TouchableOpacity
      style={styles.tab}
-     onPress={() => setActiveTab("tagged")}
+     onPress={() => {
+
+      if(isPrivateLocked){
+       Alert.alert("Private Profile","Follow to see content");
+       return;
+      }
+
+      setActiveTab("tagged");
+
+     }}
     >
      <Icon
       name="person-outline"
@@ -430,13 +496,33 @@ const unfollowUser = async () => {
     </TouchableOpacity>
    </View>
 
+  {isPrivateLocked ? (
+
+   <View style={styles.privateContainer}>
+
+    <Icon name="lock-closed" size={40} color="#555" />
+
+    <Text style={styles.privateTitle}>
+     This Account is Private
+    </Text>
+
+    <Text style={styles.privateText}>
+     Follow this account to see their posts
+    </Text>
+
+   </View>
+
+  ) : (
+
    <FlatList
-     data={posts}
-     renderItem={renderPost}
-     keyExtractor={(item) => item._id}
-     numColumns={3}
-     showsVerticalScrollIndicator={false}
+    data={posts}
+    renderItem={renderPost}
+    keyExtractor={(item) => item._id}
+    numColumns={3}
+    showsVerticalScrollIndicator={false}
    />
+
+  )}
 
   </View>
  );
@@ -465,7 +551,8 @@ const styles = StyleSheet.create({
  headerUsername:{
   fontSize:18,
   fontWeight:"600",
-  maxWidth:"60%"
+  maxWidth:"60%",
+  marginLeft:10,
  },
 
  header:{
@@ -651,5 +738,21 @@ followSuggestionText:{
  fontWeight:"600",
  fontSize:13
 },
+privateContainer:{
+ alignItems:"center",
+ justifyContent:"center",
+ marginTop:60
+},
+
+privateTitle:{
+ fontSize:18,
+ fontWeight:"600",
+ marginTop:10
+},
+
+privateText:{
+ color:"#777",
+ marginTop:5
+}
 
 });
