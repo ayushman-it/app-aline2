@@ -15,7 +15,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { API } from "../api/api";
 import Icon from "react-native-vector-icons/Ionicons";
 
-const SearchScreen = ({ navigation }) => {
+const SearchScreen = ({ navigation }: any) => {
 
   const [users, setUsers] = useState([]);
   const [search, setSearch] = useState("");

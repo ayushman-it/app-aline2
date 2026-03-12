@@ -284,12 +284,15 @@ const unfollowUser = async () => {
      <Icon name="arrow-back" size={26} />
     </TouchableOpacity>
 
-  <Text numberOfLines={1} style={styles.headerUsername}>
-   {user?.isPrivate &&  (<Icon name="lock-closed-outline" size={14} style={{marginRight:10}} />
-     )}
-   {user?.username}
+<View style={styles.headerUserRow}>
+  {user?.isPrivate && (
+    <Icon name="lock-closed-outline" size={14} style={styles.lockIcon} />
+  )}
 
+  <Text numberOfLines={1} style={styles.headerUsername}>
+    {user?.username}
   </Text>
+</View>
 
     <Icon name="menu" size={26} />
    </View>
@@ -551,7 +554,7 @@ const styles = StyleSheet.create({
  headerUsername:{
   fontSize:18,
   fontWeight:"600",
-  maxWidth:"60%",
+  maxWidth:"90%",
   marginLeft:10,
  },
 
@@ -616,7 +619,7 @@ const styles = StyleSheet.create({
  },
 
  followBtn:{
-  backgroundColor:"#0095f6",
+  backgroundColor:"#ab2aeb",
   paddingVertical:9,
   borderRadius:6,
   flex:1,
@@ -638,6 +641,14 @@ const styles = StyleSheet.create({
   marginRight:5,
   alignItems:"center"
  },
+headerUserRow:{
+ flexDirection:"row",
+ alignItems:"center"
+},
+
+lockIcon:{
+ marginRight:1
+},
 
  btnText:{
   fontWeight:"500"
@@ -727,7 +738,7 @@ suggestionName:{
 },
 
 followSuggestionBtn:{
- backgroundColor:"#0095f6",
+ backgroundColor:"black",
  paddingVertical:6,
  paddingHorizontal:18,
  borderRadius:6

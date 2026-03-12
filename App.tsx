@@ -14,6 +14,9 @@ import ProfilePreviewScreen from './src/screens/ProfilePreviewScreen';
 import NotificationScreen from './src/screens/NotificationScreen';
 import FollowersFollowingScreen from './src/screens/FollowersFollowingScreen';
 import CreatePostScreen from './src/screens/CreatePostScreen';
+import ChatScreen from './src/screens/ChatScreen';
+import ChatDetailsScreen from './src/screens/ChatDetailsScreen';
+import AllChatsScreen from './src/screens/AllChatsScreen';
 
 import BottomTabs from './src/navigation/BottomTabs';
 
@@ -48,6 +51,9 @@ export default function App() {
           <Stack.Screen name="CreatePostScreen" component={CreatePostScreen} />
           <Stack.Screen name="ProfilePreviewScreen" component={ProfilePreviewScreen} />
           <Stack.Screen name="FollowersFollowingScreen" component={FollowersFollowingScreen} />
+          <Stack.Screen name="ChatScreen" component={ChatScreen} />
+          <Stack.Screen name="ChatDetailsScreen" component={ChatDetailsScreen} />
+          <Stack.Screen name="AllChatsScreen" component={AllChatsScreen} />
 
         </Stack.Navigator>
 
